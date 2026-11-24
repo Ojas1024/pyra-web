@@ -1,5 +1,7 @@
 # Pyra in the browser
 
+**Live:** https://ojas1024.github.io/pyra-web/ (Chrome, Firefox or Safari; about 60 MB on first load, then cached)
+
 `site/` is a static single-page playground: write Pyra (`@prove` functions), press Run, and see every proof step
 checked by Pyra's kernel running client-side. Nothing is sent to a server.
 
@@ -58,3 +60,8 @@ WebAssembly's allocator it crashed. Same reduction order, now well defined.
 
 Linking note: the module is linked with `-Wl,-Bsymbolic`. Without it, Pyodide's loader resolved some C++ template
 instantiations shared by Pyra and Z3 to the wrong functions, so Z3's tactics called into unrelated code.
+
+## Deploy
+
+GitHub Pages serves the `gh-pages` branch: the contents of `site/` after `wasm/make_wheel.py` (the page, the wheel and
+the library supplement), plus an empty `.nojekyll`. The build needs a Pyra checkout, so it runs locally, not in CI.
