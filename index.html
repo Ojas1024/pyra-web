@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pyra Playground</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6b66; --line: #e3e2dd;
+    --ok: #1f7a4d; --ok-bg: #e4f3ea; --warn: #9a6400; --warn-bg: #fbf0d9; --bad: #b42318; --bad-bg: #fbe5e3;
+    --accent: #3a5ccc; --code-bg: #fbfbfa; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151514; --panel: #1e1e1c; --ink: #ecebe6; --muted: #9b9a93; --line: #33322e;
+      --ok: #5cc28e; --ok-bg: #173a29; --warn: #e3b45c; --warn-bg: #3a2e16; --bad: #f08a80; --bad-bg: #42201c;
+      --accent: #8aa3ff; --code-bg: #1a1a18;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151514; --panel: #1e1e1c; --ink: #ecebe6; --muted: #9b9a93; --line: #33322e;
+    --ok: #5cc28e; --ok-bg: #173a29; --warn: #e3b45c; --warn-bg: #3a2e16; --bad: #f08a80; --bad-bg: #42201c;
+    --accent: #8aa3ff; --code-bg: #1a1a18;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); max-width: 100%; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--warn); flex: none; }
+  .dot.ready { background: var(--ok); } .dot.err { background: var(--bad); }
+  main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; padding: 16px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .toolbar label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  select, button { font: inherit; font-size: 14px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 5px 10px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; padding: 5px 16px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .hint { font-size: 12px; color: var(--muted); margin-left: auto; }
+  .CodeMirror { height: 62vh; min-height: 320px; font: 14px/1.55 var(--mono); background: var(--code-bg); color: var(--ink); }
+  .CodeMirror-gutters { background: var(--code-bg); border-right: 1px solid var(--line); }
+  .CodeMirror-linenumber { color: var(--muted); }
+  .CodeMirror-cursor { border-left-color: var(--ink); }
+  .cm-s-default .cm-keyword { color: #a626a4; } .cm-s-default .cm-string { color: #2e7d32; }
+  .cm-s-default .cm-comment { color: var(--muted); font-style: italic; } .cm-s-default .cm-number { color: #b45309; }
+  .cm-s-default .cm-def, .cm-s-default .cm-variable-2 { color: var(--accent); } .cm-s-default .cm-builtin { color: #0e7490; }
+  .CodeMirror-selected { background: rgba(58, 92, 204, .18) !important; }
+  .gutter-mark { font-size: 12px; padding-left: 3px; }
+  .line-ok { background: rgba(31, 122, 77, .07); } .line-bad { background: rgba(180, 35, 24, .09); } .line-warn { background: rgba(154, 100, 0, .08); }
+  .results { padding: 12px; overflow: auto; max-height: calc(62vh + 48px); min-height: 200px; }
+  .empty { color: var(--muted); font-size: 14px; padding: 24px 8px; text-align: center; }
+  .summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+  .thm { border: 1px solid var(--line); border-radius: 9px; margin-bottom: 12px; overflow: hidden; }
+  .thm-head { display: flex; gap: 10px; align-items: center; padding: 10px 12px; flex-wrap: wrap; }
+  .thm-name { font: 600 14px var(--mono); overflow-wrap: anywhere; }
+  .chip { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; white-space: nowrap; }
+  .chip.ok { color: var(--ok); background: var(--ok-bg); } .chip.warn { color: var(--warn); background: var(--warn-bg); } .chip.bad { color: var(--bad); background: var(--bad-bg); }
+  .thm-time { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .bar { height: 6px; background: var(--line); margin: 0 12px; border-radius: 99px; overflow: hidden; display: flex; }
+  .bar span { display: block; height: 100%; } .bar .ok { background: var(--ok); } .bar .warn { background: var(--warn); } .bar .bad { background: var(--bad); }
+  .stmt { font: 12.5px var(--mono); color: var(--muted); padding: 8px 12px 0; overflow-wrap: anywhere; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  td { padding: 6px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+  tr.step { cursor: pointer; } tr.step:hover td { background: var(--code-bg); }
+  td.icon { width: 24px; font-weight: 700; } td.ln { width: 52px; color: var(--muted); font: 12px var(--mono); white-space: nowrap; }
+  td.src { font: 12.5px var(--mono); overflow-wrap: anywhere; } td.how { color: var(--muted); font-size: 12px; width: 34%; }
+  .ok-t { color: var(--ok); } .warn-t { color: var(--warn); } .bad-t { color: var(--bad); }
+  pre.err { margin: 8px 12px 12px; padding: 10px; background: var(--bad-bg); color: var(--bad); border-radius: 7px; font: 12px/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+  footer { padding: 4px 16px 20px; color: var(--muted); font-size: 12.5px; max-width: 1100px; }
+  footer p { margin: 6px 0; }
+  .loadstats { font-size: 12px; color: var(--muted); padding: 0 10px 8px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Pyra Playground</h1>
+  <span class="sub">Python proofs, checked by a Lean-compatible kernel running in your browser (WebAssembly)</span>
+  <div class="status"><span class="dot" id="dot"></span><span id="status">Loading…</span></div>
+</header>
+<main>
+  <section class="panel">
+    <div class="toolbar">
+      <label>Example <select id="examples"></select></label>
+      <label>Mode
+        <select id="mode" title="strict: every step must be kernel-verified. draft: unproved steps are admitted and reported. sketch: SMT may discharge steps (reported as SMT-Trusted).">
+          <option value="strict">strict</option><option value="draft">draft</option><option value="sketch">sketch</option>
+        </select>
+      </label>
+      <button class="primary" id="run" disabled>Run</button>
+      <span class="hint">Ctrl/⌘ + Enter</span>
+    </div>
+    <textarea id="code"></textarea>
+    <div class="loadstats" id="loadstats"></div>
+  </section>
+  <section class="panel">
+    <div class="toolbar"><strong style="font-size:14px">Results</strong><span class="hint" id="runinfo"></span></div>
+    <div class="results" id="results"><div class="empty">Write a <code>@prove</code> function and press Run.</div></div>
+  </section>
+</main>
+<footer>
+  <p>Everything runs on this device. The kernel, elaborator and Lean importer are the same C++ sources as the native Pyra build,
+     compiled to WebAssembly; Python runs in <a href="https://pyodide.org">Pyodide</a>. The Lean 4 core + Mathlib library
+     (33,128 declarations) is loaded into the kernel with the verified-import marker from a full native re-check of the same bundle
+     (same content hash); <button id="fullcheck" style="font-size:12px;padding:1px 8px">re-check it here instead</button> (several minutes).</p>
+  <p>Badges: <span class="ok-t">✔ Kernel-Verified</span> · <span class="warn-t">◐ SMT-Trusted</span> (sketch mode) ·
+     <span class="bad-t">✘ Unproved</span>. Counterexample search is not available in the browser build.</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="examples.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const editor = CodeMirror.fromTextArea($("code"), { mode: "python", lineNumbers: true, indentUnit: 4,
+  gutters: ["marks", "CodeMirror-linenumbers"], extraKeys: { "Ctrl-Enter": run, "Cmd-Enter": run, Tab: (cm) => cm.replaceSelection("    ") } });
+for (const name of Object.keys(PYRA_EXAMPLES)) $("examples").add(new Option(name, name));
+const saved = (() => { try { return localStorage.getItem("pyra-playground-code"); } catch { return null; } })();
+editor.setValue(saved || PYRA_EXAMPLES[Object.keys(PYRA_EXAMPLES)[0]]);
+editor.on("change", () => { try { localStorage.setItem("pyra-playground-code", editor.getValue()); } catch {} });
+$("examples").onchange = () => { editor.setValue(PYRA_EXAMPLES[$("examples").value]); clearMarks(); };
+
+let worker = null, ready = false, nextId = 1, running = null, marked = [];
+function setStatus(text, cls) { $("status").textContent = text; $("dot").className = "dot " + (cls || ""); }
+function start(fullCheck) {
+  if (worker) { worker.terminate(); }
+  ready = false; $("run").disabled = true; $("fullcheck").disabled = true;
+  setStatus(worker ? "Restarting the runtime…" : "Loading…");
+  worker = new Worker("worker.js");
+  worker.onmessage = (ev) => {
+    const m = ev.data;
+    if (m.type === "status") setStatus(m.text);
+    else if (m.type === "ready") {
+      ready = true; $("run").disabled = false; $("fullcheck").disabled = false;
+      const s = m.stats;
+      setStatus(`Ready · ${s.declarations.toLocaleString()} declarations loaded`, "ready");
+      $("loadstats").textContent = `Library: ${s.declarations.toLocaleString()} declarations, ${s.checked.toLocaleString()} re-checked here, `
+        + `${s.trusted.toLocaleString()} admitted by ${s.mode}; kernel load ${s.seconds}s, total start-up ${s.total_seconds}s.`;
+    } else if (m.type === "result") { show(m.result); }
+    else if (m.type === "error") {
+      if (m.id) show({ theorems: [], error: m.text, seconds: 0 });
+      else setStatus("Failed to start: " + m.text, "err");
+    } else if (m.type === "fatal") {
+      show({ theorems: [], seconds: 0, error: "This proof needs a deeper call stack than the browser allows ("
+        + m.text + ").\nNative Pyra runs proofs on a 1 GB stack; browsers cap WebAssembly recursion at about 1 MB. "
+        + "The runtime is restarting; other proofs are unaffected." });
+      start(false);
+    }
+  };
+  worker.onerror = (e) => setStatus("Worker error: " + e.message, "err");
+  worker.postMessage({ type: "init", fullCheck });
+}
+$("fullcheck").onclick = () => start(true);
+
+function run() {
+  if (!ready || running) return;
+  clearMarks();
+  running = nextId++;
+  $("run").disabled = true; $("run").textContent = "Running…";
+  $("runinfo").textContent = "";
+  $("results").innerHTML = '<div class="empty">Checking…</div>';
+  worker.postMessage({ type: "run", id: running, source: editor.getValue(), mode: $("mode").value });
+}
+$("run").onclick = run;
+
+const PROOF_KINDS = new Set(["assert", "return", "branch", "ih"]);
+const badgeCls = (b) => b === "Kernel-Verified" ? "ok" : b === "SMT-Trusted" ? "warn" : "bad";
+const ICON = { ok: "✔", warn: "◐", bad: "✘" };
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function clearMarks() {
+  editor.clearGutter("marks");
+  for (const [ln, cls] of marked) editor.removeLineClass(ln, "background", cls);
+  marked = [];
+}
+function mark(line, cls) {
+  const ln = line - 1;
+  if (ln < 0 || ln >= editor.lineCount()) return;
+  const el = document.createElement("span");
+  el.className = "gutter-mark " + cls + "-t"; el.textContent = ICON[cls];
+  editor.setGutterMarker(ln, "marks", el);
+  editor.addLineClass(ln, "background", "line-" + cls); marked.push([ln, "line-" + cls]);
+}
+
+function show(r) {
+  running = null; $("run").disabled = false; $("run").textContent = "Run";
+  const out = [];
+  let nThm = 0, nOk = 0, nSteps = 0, nVer = 0;
+  for (const t of r.theorems) {
+    nThm++;
+    const steps = t.steps.filter((s) => PROOF_KINDS.has(s.kind));
+    const ver = steps.filter((s) => s.badge === "Kernel-Verified").length;
+    const smt = steps.filter((s) => s.badge === "SMT-Trusted").length;
+    const bad = steps.length - ver - smt;
+    nSteps += steps.length; nVer += ver;
+    let chip;
+    if (t.ok && t.verified) { chip = '<span class="chip ok">Verified</span>'; nOk++; }
+    else if (t.ok) chip = `<span class="chip warn">${bad ? "Incomplete" : "SMT-trusted"} · ${ver}/${steps.length} steps</span>`;
+    else if (steps.length) chip = `<span class="chip bad">Not proved · ${ver}/${steps.length} steps</span>`;
+    else chip = '<span class="chip bad">Error</span>';
+    const pct = (n) => steps.length ? (100 * n / steps.length).toFixed(1) + "%" : "0";
+    let rows = "";
+    for (const s of steps) {
+      const c = badgeCls(s.badge);
+      mark(s.line, c);
+      const how = [s.stage, (s.lemmas || []).join(", "), s.ms ? Math.round(s.ms) + " ms" : ""].filter(Boolean).join(" · ");
+      rows += `<tr class="step" data-line="${s.line}"><td class="icon ${c}-t">${ICON[c]}</td><td class="ln">line ${s.line}</td>
+        <td class="src">${esc(s.source || s.text)}${s.detail && c === "bad" ? `<div class="bad-t" style="font-family:inherit;margin-top:3px">${esc(s.detail)}</div>` : ""}</td>
+        <td class="how">${esc(how)}</td></tr>`;
+    }
+    out.push(`<div class="thm"><div class="thm-head"><span class="thm-name">${esc(t.name)}</span>${chip}
+      <span class="thm-time">${t.mode} · ${t.seconds}s</span></div>
+      ${steps.length ? `<div class="bar"><span class="ok" style="width:${pct(ver)}"></span><span class="warn" style="width:${pct(smt)}"></span><span class="bad" style="width:${pct(bad)}"></span></div>` : ""}
+      ${t.statement ? `<div class="stmt">theorem ${esc(t.name)} : ${esc(t.statement)}</div>` : ""}
+      ${rows ? `<table>${rows}</table>` : ""}
+      ${t.error ? `<pre class="err">${esc(t.error)}</pre>` : ""}</div>`);
+  }
+  if (r.error) out.push(`<pre class="err">${esc(r.error)}</pre>`);
+  if (!nThm && !r.error) out.push('<div class="empty">No <code>@prove</code> theorem found.</div>');
+  $("results").innerHTML = (nThm ? `<div class="summary"><span><b>${nOk}/${nThm}</b> theorems verified</span>
+    <span><b>${nVer}/${nSteps}</b> proof steps kernel-verified</span></div>` : "") + out.join("");
+  $("runinfo").textContent = `${r.seconds}s`;
+  for (const tr of document.querySelectorAll("tr.step")) tr.onclick = () => {
+    const ln = +tr.dataset.line - 1; editor.setCursor(ln, 0); editor.scrollIntoView({ line: ln, ch: 0 }, 80); editor.focus();
+  };
+}
+start(false);
+</script>
+</body>
+</html>
