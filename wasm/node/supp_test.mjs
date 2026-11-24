@@ -1,0 +1,13 @@
+import puppeteer from "puppeteer-core";
+const exe = new URL("./chrome/chrome-headless-shell/linux-158.0.8127.36/chrome-headless-shell-linux64/chrome-headless-shell", import.meta.url).pathname;
+const browser = await puppeteer.launch({ executablePath: exe, args: ["--no-sandbox"], protocolTimeout: 900000 });
+const page = await browser.newPage();
+await page.setViewport({ width: 1400, height: 1000 });
+await page.goto(process.argv[2]);
+await page.waitForFunction(() => document.getElementById("status").textContent.startsWith("Ready"), { timeout: 300000 });
+await page.select("#examples", "Logarithms and powers (loads a Mathlib supplement)");
+await page.click("#run");
+await page.waitForFunction(() => document.getElementById("run").textContent === "Run" && !document.querySelector("#results .empty"), { timeout: 600000 });
+console.log(await page.$eval("#results", (e) => e.innerText.slice(0, 1500)));
+await page.screenshot({ path: "screenshot_supplement.png" });
+await browser.close();

@@ -1,0 +1,11 @@
+# generated: WebAssembly build, wheel and library supplement (rebuild with wasm/build.sh + wasm/make_wheel.py)
+wasm/build/
+site/*.whl
+site/*.ndjson.gz
+# local test tooling
+wasm/node/node_modules/
+wasm/node/debug/
+wasm/node/chrome/
+wasm/node/*.png
+__pycache__/
+.ipynb_checkpoints/
